@@ -1,6 +1,6 @@
 # Implementation Guide
 
-本文档是 AI 和开发者执行 V1 的实施手册。它补充 `roadmap.md` 的版本目标，不替代 `requirements.md`、`workflow.md` 或 `testing.md`。
+本文档是 AI 和开发者执行 V1 的实施手册。它补充 `roadmap.md` 的版本目标，不替代 `requirements.md`、`workflow.md`、`testing.md` 或 `review.md`。
 
 ## Execution principles
 
@@ -9,6 +9,7 @@
 - 每次只推进一个可验证的垂直切片，完成后再扩大范围。
 - 代码改动由测试和实际样本验证；文档或代码未通过验收，不得把 roadmap 状态改为 `completed`。
 - 不因为遇到困难就扩大技术范围、引入 V2 组件或改变已确认的架构边界。
+- Terra 完成实现；只有命中 `docs/review.md` 的高风险改动才请求 Sol review。
 
 ## V1 implementation slices
 

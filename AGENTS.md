@@ -17,6 +17,7 @@ The V1 target is an unattended English-to-Chinese translation workflow for digit
 - `docs/rendering.md`: PDF overlay, fonts, overflow, and collision rules.
 - `docs/testing.md`: deterministic test and verification matrix.
 - `docs/implementation.md`: bounded implementation slices and escalation rules.
+- `docs/review.md`: scoped Terra/Sol review policy for high-risk changes.
 - `docs/decisions.md`: ADRs and rejected alternatives.
 - `docs/git.md`: commit convention, approval gates, and push policy.
 - `docs/roadmap.md`: version goals, status, and acceptance checklists.
