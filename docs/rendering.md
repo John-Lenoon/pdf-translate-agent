@@ -14,7 +14,7 @@
 
 ## Validation
 
-每页渲染后执行：PDF 可重新打开、文字对象可提取、segment 输出完整、bbox 不越界、与图片/固定区域无碰撞。任何失败都使 run 进入 `render_failed`，不得标记为 `completed`。
+每页渲染后执行：PDF 可重新打开、文字对象可提取、每个 translation fragment 可在对应页完整提取、bbox 不越界、与图片/固定区域无碰撞。任何失败都使 run 进入 `render_failed`，不得标记为 `completed`。局部重译失败后，旧译文 PDF 视为 stale，API 在新运行完成前不得列出或下载它。
 
 ## Known limits
 

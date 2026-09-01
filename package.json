@@ -1,0 +1,6 @@
+{
+  "name": "pdf-translate-agent",
+  "private": true,
+  "packageManager": "pnpm@10.0.0",
+  "scripts": {"dev:web": "pnpm --dir apps/web dev"}
+}

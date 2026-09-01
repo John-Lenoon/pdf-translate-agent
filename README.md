@@ -18,7 +18,7 @@ V1 首先验证 10 页以内的端到端闭环，初步支持 50 页以内的文
 - Python、FastAPI、Pydantic、uv
 - PyMuPDF
 - SQLite
-- OpenAI API（模型通过 `TRANSLATION_MODEL` 配置；Terra 是当前选定的模型系列）
+- OpenAI-compatible API（默认支持 OpenAI；可通过 `OPENAI_BASE_URL` 接入 DeepSeek 等兼容服务）
 - Next.js、pnpm workspace
 
 ## V1 版本基线
@@ -40,13 +40,35 @@ V1 首先验证 10 页以内的端到端闭环，初步支持 50 页以内的文
 | SQLite | 3.47+ |
 | OpenAI Python SDK | 1.100+ |
 
-`TRANSLATION_MODEL` 必须填写实际可调用的 OpenAI API model ID；“Terra”不是可直接复制到配置中的版本号或 model ID。依赖版本在实现阶段通过锁文件确认，未验证的组合不得标记为 V1 支持。
+`TRANSLATION_MODEL` 必须填写当前 API 端点实际可调用的 model ID；设置 `OPENAI_BASE_URL` 后，Provider 使用兼容服务的 Chat Completions 结构化输出接口。依赖版本在实现阶段通过锁文件确认，未验证的组合不得标记为 V1 支持。
 
 ## 本地环境
 
-需要 Node.js 22+、pnpm、Python 3.13+ 和 `uv`。复制 `.env.example` 为 `.env`，设置 `OPENAI_API_KEY` 与 `TRANSLATION_MODEL`；密钥只在本地环境变量中保存。
+需要 Node.js 22+、pnpm、Python 3.13+ 和 `uv`。在仓库根目录执行 `Copy-Item .env.example .env`，然后设置 `OPENAI_API_KEY` 与 `TRANSLATION_MODEL`；后端会自动加载这个文件，密钥只在本地环境变量中保存。可选的 `TRANSLATION_FONT_PATH` 可指向本机中文字体文件；未设置时使用 PyMuPDF 内置 CJK 字体。
 
-V1 计划手动启动三个本地进程：Next.js UI、FastAPI API 和 Python Workflow runner。具体命令会在对应实现切片完成后补充；当前仓库仍处于文档阶段。
+Next.js 默认连接 `http://127.0.0.1:8000`，无需前端环境文件。只有修改后端地址时，才执行 `Copy-Item apps/web/.env.local.example apps/web/.env.local` 并修改 `NEXT_PUBLIC_API_URL`。不要在 `NEXT_PUBLIC_*` 变量中放置 API 密钥，因为它们会进入浏览器端构建产物。
+
+### 启动
+
+```powershell
+uv sync --extra dev
+pnpm --dir apps/web install
+
+# 终端 1：FastAPI
+.\scripts\python.ps1 -m uvicorn apps.api.main:app --reload --port 8000
+
+# 终端 2：Workflow runner
+.\scripts\python.ps1 -m translator.runner
+
+# 终端 3：Next.js
+pnpm --dir apps/web dev
+```
+
+`pnpm --dir apps/web dev` 表示在 `apps/web` 目录执行该包的 `dev` 脚本（即 `next dev`），等价于先进入该目录再运行 `pnpm dev`。根目录也提供快捷命令 `pnpm dev:web`。
+
+浏览器访问 `http://localhost:3000`。在 `.env` 中设置 `OPENAI_API_KEY`、`OPENAI_BASE_URL`（例如 `https://api.deepseek.com`）和实际可调用的 `TRANSLATION_MODEL` 后，点击上传区域选择或拖入 PDF 即可创建任务；文件只保存到本地 `runs/uploads/`。
+
+如果页面提示无法连接本地 API，请确认 FastAPI 终端仍在运行，并访问 `http://127.0.0.1:8000/health` 检查是否返回 `{"status":"ok"}`。
 
 ## 数据与版权
 
@@ -58,4 +80,4 @@ V1 计划手动启动三个本地进程：Next.js UI、FastAPI API 和 Python Wo
 
 ## 当前状态
 
-项目处于文档和架构定义阶段，尚未开始实现代码。
+V1 本地闭环已进入 `in_progress`：自动化实现、本地 UI 与高风险代码审查已通过，但正式完成仍取决于真实模型可用性、3 个合法样本和至少 30 个 Golden Set 段落的人工 Judge 记录。当前状态和证据以 [`docs/roadmap.md`](docs/roadmap.md) 为准。

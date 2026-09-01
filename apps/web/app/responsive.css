@@ -1,0 +1,47 @@
+@media (max-width: 900px) {
+  .setup,
+  .runbar,
+  .workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .workspace aside,
+  .workspace article {
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+
+.file-drop {
+  min-height: 104px;
+  border: 1px dashed #9eb9aa;
+  border-radius: 4px;
+  background: #fbfdfb;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.file-drop.active {
+  border-color: var(--accent);
+  background: var(--mint);
+}
+
+.file-drop input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.file-drop label {
+  cursor: pointer;
+  align-items: center;
+  text-transform: none;
+  letter-spacing: 0;
+  padding: 20px;
+}
+
+.file-drop strong { font-size: 15px; color: var(--ink); }
+.file-drop span { font-size: 12px; color: var(--muted); text-transform: none; letter-spacing: 0; }

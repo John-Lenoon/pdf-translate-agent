@@ -46,3 +46,5 @@ completed → reviewing → retranslate_queued → translating
 瞬时 Provider 错误（网络、限流、临时服务错误）最多自动重试 3 次并指数退避；不可重试错误立即失败。人工 Judge 触发的重译不设固定次数，但每次必须有新的 Judge 反馈或上下文变更，并受运行预算限制；没有新证据时停止并标记 `blocked`。所有重译必须保存原因、attempt、模型、Prompt 和上下文版本；不得无限循环。
 
 取消、进程崩溃或 API 重启后，runner 根据 SQLite 状态和 artifact hash 恢复；已存在且校验通过的 translation 不得重复调用模型。
+
+AST、Glossary、章节摘要及派生 JSONL artifact 使用临时文件原子替换。模型 warnings 和 Glossary suggestions 先与 translation metadata 同事务保存，再从当前 translation 记录幂等物化，避免提交后崩溃造成丢失。运行取消优先于普通 Provider 或 render error；失去 lease 的 worker 不得改变后续状态。

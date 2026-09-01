@@ -8,9 +8,11 @@ SQLite 是本地运行状态和人物 Entity Registry 的持久化层。原始 P
 
 ### `runs`
 
-`id`, `source_path`, `source_sha256`, `status`, `error_code`, `idempotency_key`, `request_fingerprint`, `lease_until`, `heartbeat_at`, `worker_id`, `created_at`, `updated_at`
+`id`, `source_path`, `source_sha256`, `status`, `error_code`, `idempotency_key`, `request_fingerprint`, `glossary_json`, `lease_until`, `heartbeat_at`, `worker_id`, `created_at`, `updated_at`
 
 `idempotency_key` 在同一本地 workspace 内唯一；`request_fingerprint` 包含输入 PDF hash、目标语言、Glossary hash 和配置版本。相同 key 且 fingerprint 相同的请求返回已有 run；fingerprint 不同则返回冲突错误。
+
+`glossary_json` 是崩溃恢复源；`runs/<run_id>/glossary.json` 是可读 artifact，可从数据库原子重建。
 
 ### `documents`
 
@@ -38,7 +40,7 @@ V1 的 `entity_type` 只允许 `person`。同一 run 内 `source_name` 全局唯
 
 ## Task claiming
 
-SQLite 使用 WAL 模式。runner 领取任务时在短事务中写入 lease/heartbeat 字段；超时 lease 可被恢复。所有写入必须经过 repository 层，Workflow 不直接拼接 SQL。
+SQLite 使用 WAL 模式。runner 领取任务时在短事务中写入 lease/heartbeat 字段；执行期间后台续租，超时 lease 可被恢复。translation、Entity、segment error 和 run 状态等关键写入必须校验当前 worker ownership，失租 worker 不得继续提交。所有写入必须经过 repository 层，Workflow 不直接拼接 SQL。
 
 建议索引：`UNIQUE(idempotency_key)`、`INDEX(status, lease_until)`、`UNIQUE(run_id, entity_type, normalized_source_name)`。
 

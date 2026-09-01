@@ -24,7 +24,7 @@ Status: `in_progress`
 
 ## V1 - 本地翻译闭环
 
-Status: `planned`
+Status: `in_progress`
 
 ### Requirements
 
@@ -44,6 +44,14 @@ Status: `planned`
 - 输出 PDF 不修改源文件，页面和结构要求可验证。
 - 至少 3 个 10 页以内样本和至少 30 个 Golden Set 段落完成回归记录。
 - 运行中断、取消、恢复和局部重译均有自动化测试证据。
+
+### Current evidence
+
+- 自动化实现覆盖解析、分段、Entity、结构化翻译、恢复、取消、局部重译和渲染失败检查。
+- 最新证据：Python 27 passed、前端请求 3 passed、Next.js production build/TypeScript passed，桌面及 390 x 844 浏览器 UI 验收通过；详见 `docs/testing.md`。
+- 高风险独立复审结论：`No blocking/high findings`。
+- 尚未完成：使用有效 OpenAI 凭据运行 3 个合法的 10 页以内样本；建立并人工 Judge 至少 30 个 Golden Set 段落。
+- 在上述证据全部满足前，V1 保持 `in_progress`，不得标记为 `completed`。
 
 ## V2 - 质量增强
 

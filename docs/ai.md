@@ -2,7 +2,7 @@
 
 ## Model
 
-V1 翻译使用 OpenAI API。正式 API model ID 必须通过环境变量 `TRANSLATION_MODEL` 配置并写入每个 translation record；“Terra”只是当前选定的模型系列称呼，不是可直接调用的 model ID。API key 只从环境变量读取，不写入数据库或 artifact。
+V1 翻译使用 OpenAI-compatible API。正式 model ID 必须通过环境变量 `TRANSLATION_MODEL` 配置并写入每个 translation record；`OPENAI_BASE_URL` 可指向 DeepSeek 等兼容服务。API key 只从环境变量读取，不写入数据库或 artifact。
 
 ## Translation output
 
