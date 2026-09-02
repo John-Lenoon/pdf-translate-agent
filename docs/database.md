@@ -1,5 +1,16 @@
 # Database
 
+## V2 extension
+
+SQLite remains the canonical store. The following V2 records are additions to the V1 schema and use SQL migrations; exact table names may vary, but their identity and recovery semantics must not.
+
+- `run_model_plans`: immutable, secret-free plan snapshot per run. It stores adapter type, endpoint, model/profile version, request limits, prompt/workflow/risk-policy versions, and a credential-vault reference. It never stores an API key.
+- `translation_candidates`: versioned local and remote candidate text, structured validation outcome, model/prompt/context versions, usage and timestamps. One validated candidate may be current per segment.
+- `risk_decisions`: the persisted `QualityRouter` result: score, signals, small-model risk label, route, review status and selection reason. It is audit evidence and is not independently recalculated by repositories.
+- `provider_events`: credential, quota, token usage, retry and stable error events. Secrets and prompt text are excluded.
+
+`runs.status` adds `completed_with_review_debt` and `remote_review_queued`. A V2 run report is regenerated from these canonical records and validated artifacts; it is not the source of truth. See [`v2-dual-model.md`](v2-dual-model.md) for state and artifact rules.
+
 ## V1: SQLite
 
 SQLite 是本地运行状态和人物 Entity Registry 的持久化层。原始 PDF、AST、译文、Judge 记录和渲染产物存放在 `runs/<run_id>/`，数据库只保存索引、状态和可查询元数据。

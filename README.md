@@ -81,3 +81,5 @@ pnpm --dir apps/web dev
 ## 当前状态
 
 V1 本地闭环已进入 `in_progress`：自动化实现、本地 UI 与高风险代码审查已通过，但正式完成仍取决于真实模型可用性、3 个合法样本和至少 30 个 Golden Set 段落的人工 Judge 记录。当前状态和证据以 [`docs/roadmap.md`](docs/roadmap.md) 为准。
+
+已规划的 V2 将使用本地小模型初译，并仅将高风险段落交给用户配置的远程大模型审校；它不引入登录、多用户托管、PostgreSQL 或通用 RAG。V2 API key 仅保存在用户机器的操作系统凭据库，详细边界见 [`docs/v2-dual-model.md`](docs/v2-dual-model.md)。

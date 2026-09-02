@@ -1,5 +1,16 @@
 # Local API
 
+## V2 extension
+
+V2 adds local Provider Profile management and developer-only continuation controls. These are local configuration endpoints, not authentication or user-account endpoints. Secret values are accepted only by the local API for immediate storage in the operating-system credential vault and are never returned in responses.
+
+- Provider Profile creation/update returns profile metadata and status only; `draft -> tested -> enabled` requires a connection test.
+- Run creation selects enabled profile IDs. The API writes an immutable, secret-free `RunModelPlan` before queueing the run.
+- Run status and artifact responses expose `completed_with_review_debt`, stable error codes, permitted next actions, and the versioned `run_report.json` path.
+- A developer-only continuation action may queue only debt segments after a credential or remote-token condition is resolved. A normal user Judge endpoint is not part of the V2 product flow.
+
+Exact URL shapes and request schemas must be specified with Pydantic before implementation. The API must never expose a credential-vault reference if it can be used to retrieve a secret outside the local process.
+
 FastAPI 只在本机运行，为 Next.js 提供稳定边界。
 
 ## Initial endpoints

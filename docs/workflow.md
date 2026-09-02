@@ -1,5 +1,18 @@
 # Translation Workflow
 
+## V2 extension
+
+V1's state machine and user-facing Judge contract remain its acceptance baseline. V2 replaces ordinary-user Judge interaction with unattended dual-model routing and developer artifact review; the V2-specific design is [`v2-dual-model.md`](v2-dual-model.md).
+
+```text
+translating -> rendering -> completed | completed_with_review_debt | render_failed
+completed_with_review_debt -> remote_review_queued -> translating
+```
+
+`completed_with_review_debt` is a resumable terminal state for a pass. It may expose a validated PDF, but the run report must identify each segment whose required remote review is outstanding. Explicit developer continuation queues only those debt segments. A translation failure or unresolved Entity consistency issue prevents the affected page from rendering; a render validation failure remains `render_failed`.
+
+V2's `TranslationCoordinator` owns batching, retrying, local/remote model invocation and ordered Entity merging. `QualityRouter` is the sole owner of risk routing. `RunFinalizer` decides page readiness and invokes the renderer only with final translations. Details and Interfaces are defined in the V2 design document.
+
 ## State machine
 
 ```text
