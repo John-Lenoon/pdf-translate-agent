@@ -1,5 +1,7 @@
 # Local Model Integration Proposal
 
+> Status: Historical. Superseded by [`../v2-dual-model.md`](../v2-dual-model.md). This file is retained for design-history reference only.
+
 ## Decision to Make
 
 Use a local English-to-Chinese model as the default first-pass translator without

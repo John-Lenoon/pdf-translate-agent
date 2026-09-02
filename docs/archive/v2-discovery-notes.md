@@ -1,5 +1,7 @@
 # V2 Product Discovery Notes
 
+> Status: Historical. Superseded by [`../v2-dual-model.md`](../v2-dual-model.md). This file is retained for design-history reference only.
+
 Date: 2026-09-02
 
 ## Opportunity

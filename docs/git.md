@@ -27,8 +27,10 @@
 1. 查看 `git status`，确认没有混入无关或敏感文件。
 2. 运行与改动相关的测试和 `git diff --check`。
 3. 若改动影响用户可见行为、启动方式、版本、环境变量、输入输出或版本范围，检查 `README.md` 是否已同步。
-4. 检查 commit diff，确认只包含本次授权范围。
-5. commit 后报告 commit hash、验证命令和未提交改动。
+4. 每次代码修改或新增功能都检查受影响的 `docs/` 文档，并在同一变更中更新；若确认无文档影响，在变更说明中记录理由。
+5. 若改动影响翻译质量、模型路由、Prompt、Entity/Glossary、渲染或评测指标，检查 `evals/README.md` 是否已同步，并记录需重跑的评测。
+6. 检查 commit diff，确认只包含本次授权范围。
+7. commit 后报告 commit hash、验证命令和未提交改动。
 
 ## Push policy
 

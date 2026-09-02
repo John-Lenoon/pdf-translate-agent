@@ -21,6 +21,7 @@ The V1 target is an unattended English-to-Chinese translation workflow for digit
 - `docs/decisions.md`: ADRs and rejected alternatives.
 - `docs/git.md`: commit convention, approval gates, and push policy.
 - `docs/roadmap.md`: version goals, status, and acceptance checklists.
+- `docs/00-document-map.md`: controlled document index and reading order.
 - `evals/README.md`: Golden Set and quality regression process.
 
 When documents conflict, `AGENTS.md` wins, followed by the most recent accepted ADR.
@@ -28,8 +29,17 @@ When documents conflict, `AGENTS.md` wins, followed by the most recent accepted 
 ## Documentation synchronization
 
 - `README.md` is the user entry point. When user-visible features, installation/startup commands, technology versions, environment variables, input/output formats, or V1/V2 scope and acceptance criteria change, update `README.md` in the same change.
+- `evals/README.md` is the quality-evaluation entry point. When translation behavior, model routing, Entity/Glossary rules, prompts, risk policy, rendering quality, or evaluation metrics change, update the evaluation process in the same change.
 - Internal refactors, test-only changes, and implementation details that do not affect users do not require README changes.
 - Keep README concise and link to `docs/` for detail. If README and `docs/` conflict, resolve the conflict in the same change; do not leave contradictory instructions.
+
+### Documentation file policy
+
+- `docs/` is a controlled directory. Agents must not create, rename, move, split, or archive a Markdown file there on their own.
+- The approved document set is: `00-document-map.md`, `requirements.md`, `roadmap.md`, `architecture.md`, `workflow.md`, `ai.md`, `database.md`, `api.md`, `rendering.md`, `testing.md`, `implementation.md`, `decisions.md`, `review.md`, `git.md`, and the explicitly approved historical files `archive/v2-discovery-notes.md` and `archive/local-model-integration-proposal.md`.
+- No other Markdown path under `docs/` may be created without explicit approval of that exact path and purpose. A discussion or plan is not approval to create a file.
+- When a new document is approved, update the document map (or `README.md` until the map exists) and identify its single source-of-truth responsibility. Do not duplicate an existing document's contract.
+- If a change can be documented in an approved file, update that file instead of adding a new one. If no approved file is suitable, stop and request approval before editing.
 
 ## Engineering constraints
 
