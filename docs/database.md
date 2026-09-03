@@ -1,62 +1,18 @@
 # Database
 
-## V2 extension
+SQLite 是本地运行状态、任务协调和人物 Entity Registry 的 canonical store；原始 PDF、AST、译文、Judge 记录和渲染产物存放在 `runs/<run_id>/`。字段定义、约束和迁移 SQL 以 ORM/model 与 migration 代码及测试为真值。
 
-SQLite remains the canonical store. The following V2 records are additions to the V1 schema and use SQL migrations; exact table names may vary, but their identity and recovery semantics must not.
+## Domain relationships
 
-- `run_model_plans`: immutable, secret-free plan snapshot per run. It stores adapter type, endpoint, model/profile version, request limits, prompt/workflow/risk-policy versions, and a credential-vault reference. It never stores an API key.
-- `translation_candidates`: versioned local and remote candidate text, structured validation outcome, model/prompt/context versions, usage and timestamps. One validated candidate may be current per segment.
-- `risk_decisions`: the persisted `QualityRouter` result: score, signals, small-model risk label, route, review status and selection reason. It is audit evidence and is not independently recalculated by repositories.
-- `provider_events`: credential, quota, token usage, retry and stable error events. Secrets and prompt text are excluded.
+一个 run 对应 document、segments、translations、entities、judgments，以及 V2 的 immutable model plan、candidate、risk decision 和 provider event 记录。候选按 segment 版本化，运行报告由 canonical records 和已验证 artifacts 重建，不是数据库真值。
 
-`runs.status` adds `completed_with_review_debt` and `remote_review_queued`. A V2 run report is regenerated from these canonical records and validated artifacts; it is not the source of truth. See [`v2-dual-model.md`](v2-dual-model.md) for state and artifact rules.
+## Invariants
 
-## V1: SQLite
+- `idempotency_key` 在 workspace 内唯一；相同 fingerprint 的重复请求复用已有 run，冲突 fingerprint 明确失败。
+- 同一 run 的人物 Entity 按 `(entity_type, normalized_source_name)` 唯一，且 V1/V2 只允许 `person`；并发 observation 必须按文档顺序在事务中合并，不覆盖既有 canonical 名称。
+- runner 使用 WAL、短事务 lease/heartbeat 和 ownership 校验；失租 worker 不得继续写入，超时 lease 可恢复。
+- 所有写入经过 repository 层；Workflow 不直接拼接 SQL。Glossary 输入 hash 和可恢复状态必须可追溯，artifact 使用临时文件原子替换。
 
-SQLite 是本地运行状态和人物 Entity Registry 的持久化层。原始 PDF、AST、译文、Judge 记录和渲染产物存放在 `runs/<run_id>/`，数据库只保存索引、状态和可查询元数据。
+## Index and migration strategy
 
-## Initial entities
-
-### `runs`
-
-`id`, `source_path`, `source_sha256`, `status`, `error_code`, `idempotency_key`, `request_fingerprint`, `glossary_json`, `lease_until`, `heartbeat_at`, `worker_id`, `created_at`, `updated_at`
-
-`idempotency_key` 在同一本地 workspace 内唯一；`request_fingerprint` 包含输入 PDF hash、目标语言、Glossary hash 和配置版本。相同 key 且 fingerprint 相同的请求返回已有 run；fingerprint 不同则返回冲突错误。
-
-`glossary_json` 是崩溃恢复源；`runs/<run_id>/glossary.json` 是可读 artifact，可从数据库原子重建。
-
-### `documents`
-
-`id`, `run_id`, `page_count`, `ast_version`, `source_metadata_json`
-
-### `segments`
-
-`id`, `document_id`, `chapter_id`, `ordinal`, `source_text`, `source_hash`, `bbox_refs_json`, `status`
-
-### `translations`
-
-`id`, `segment_id`, `text`, `model`, `prompt_version`, `context_version`, `attempt`, `is_current`, `created_at`
-
-### `entities`
-
-`id`, `run_id`, `entity_type`, `source_name`, `target_name`, `first_segment_id`, `created_at`, `updated_at`
-
-V1 的 `entity_type` 只允许 `person`。同一 run 内 `source_name` 全局唯一；更新译名必须留下审计记录或产生新版本。
-
-并发规则：对 `(run_id, entity_type, normalized_source_name)` 建立唯一索引；Entity upsert 必须在事务中执行。重复发现不得覆盖已有 `target_name`，而是记录 observation 并由 Workflow 采用已存在的 canonical 值。
-
-### `judgments`
-
-`id`, `segment_id`, `label`, `notes`, `created_at`
-
-## Task claiming
-
-SQLite 使用 WAL 模式。runner 领取任务时在短事务中写入 lease/heartbeat 字段；执行期间后台续租，超时 lease 可被恢复。translation、Entity、segment error 和 run 状态等关键写入必须校验当前 worker ownership，失租 worker 不得继续提交。所有写入必须经过 repository 层，Workflow 不直接拼接 SQL。
-
-建议索引：`UNIQUE(idempotency_key)`、`INDEX(status, lease_until)`、`UNIQUE(run_id, entity_type, normalized_source_name)`。
-
-Glossary 建议只保存为 `runs/<run_id>/glossary_suggestions.jsonl` artifact，不进入 V1 canonical 数据表；用户 Glossary 的输入 hash 写入 `runs.request_fingerprint`。
-
-## Migration rule
-
-使用 SQL migration 管理 SQLite schema。未来迁移 PostgreSQL 时保持领域表和 ID 语义不变，替换存储适配器，不让 Workflow 直接依赖 SQLite API。
+保持 idempotency、状态领取和 Entity 唯一性所需的唯一索引/查询索引。使用 SQL migrations 管理 SQLite；未来迁移 PostgreSQL 时保持领域表和 ID 语义不变，仅替换存储适配器。

@@ -86,14 +86,14 @@ def parse_pdf(path: Path) -> DocumentAST:
             image_area = sum(
                 fitz.Rect(block.bbox).get_area() for block in blocks if block.kind == "image"
             )
-            if page_characters < 20 or (
+            if page_characters < 10 or (
                 image_area / max(1, page.rect.get_area()) > 0.5 and page_characters < 200
             ):
                 raise PDFValidationError(
                     f"PDF_TEXT_COVERAGE_TOO_LOW_PAGE_{page_index + 1}"
                 )
 
-        if extracted_characters < max(20, pdf.page_count * 5):
+        if extracted_characters < max(10, pdf.page_count * 5):
             raise PDFValidationError("PDF_TEXT_COVERAGE_TOO_LOW")
         metadata = {key: value for key, value in pdf.metadata.items() if value is not None}
         return DocumentAST(

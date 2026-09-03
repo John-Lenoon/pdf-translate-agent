@@ -44,4 +44,4 @@
 - Reason: Local initial translation lowers remote token cost. A bounded local context package and deterministic validation protect consistency and traceability without making the first run interactive. Larger models are evaluated rather than assumed superior.
 - Security: The local app has Provider Profiles, not user accounts. API keys live in the operating-system credential vault and are referenced, never stored, by SQLite or run artifacts.
 - Storage: SQLite remains the V2 store. PostgreSQL is deferred until a separately approved remote multi-user service requires it.
-- Details: [`docs/v2-dual-model.md`](v2-dual-model.md).
+- Details: [`docs/core-design.md`](core-design.md).

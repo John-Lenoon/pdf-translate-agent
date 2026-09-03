@@ -1,0 +1,1 @@
+export function Progress({ value = 0, ...props }: { value?: number } & React.HTMLAttributes<HTMLDivElement>) { return <div className="ui-progress" role="progressbar" aria-valuenow={value} {...props}><div style={{ width: `${value}%` }} /></div>; }

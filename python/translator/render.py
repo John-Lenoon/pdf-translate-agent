@@ -78,6 +78,40 @@ def _check_collisions(ast: DocumentAST, segments: list[Segment], report: RenderR
             occupied[page_number].append((segment.id, rect))
 
 
+def _safe_expanded_rect(
+    page: fitz.Page,
+    rect: fitz.Rect,
+    segment_id: str,
+    segments: list[Segment],
+    ast: DocumentAST,
+) -> fitz.Rect:
+    """Extend a text box into free space below its source line when possible."""
+    obstacles: list[fitz.Rect] = [
+        fitz.Rect(block.bbox)
+        for document_page in ast.pages
+        if document_page.number == page.number + 1
+        for block in document_page.blocks
+        if block.kind in {"image", "other"}
+    ]
+    for segment in segments:
+        if segment.id == segment_id:
+            continue
+        obstacles.extend(
+            fitz.Rect(bbox)
+            for page_number, bbox in segment.bbox_refs
+            if page_number == page.number
+        )
+
+    bottom = page.rect.y1 - 12
+    for obstacle in obstacles:
+        if obstacle.y0 <= rect.y1 or obstacle.x1 <= rect.x0 or obstacle.x0 >= rect.x1:
+            continue
+        bottom = min(bottom, obstacle.y0 - 2)
+    if bottom <= rect.y1:
+        return rect
+    return fitz.Rect(rect.x0, rect.y0, rect.x1, bottom)
+
+
 def render_overlay(
     source_pdf: Path,
     output_pdf: Path,
@@ -150,10 +184,11 @@ def render_overlay(
                             segment_id=segment.id,
                         ),
                     )
+                render_rect = rect
                 if font_path:
                     page.insert_font(fontname=font_name, fontfile=str(font_path))
-                page.draw_rect(rect, color=None, fill=(1, 1, 1), overlay=True)
-                base_size = max(minimum_font_size, min(12.0, rect.height * 0.45))
+                page.draw_rect(render_rect, color=None, fill=(1, 1, 1), overlay=True)
+                base_size = max(minimum_font_size, min(12.0, render_rect.height * 0.45))
                 remaining = -1.0
                 font_size = base_size
                 # Keep PyMuPDF's normal line metrics; values below 1 can report
@@ -162,7 +197,7 @@ def render_overlay(
                 while font_size >= minimum_font_size:
                     shape = page.new_shape()
                     remaining = shape.insert_textbox(
-                        rect,
+                        render_rect,
                         fragment,
                         fontname=font_name,
                         fontsize=font_size,
@@ -181,9 +216,9 @@ def render_overlay(
                     candidate = max(minimum_font_size, font_size + 0.5)
                     width = font.text_length(fragment, fontsize=candidate)
                     height = candidate * 1.2
-                    if width <= rect.width + 0.01 and height <= rect.height + 0.01:
+                    if width <= render_rect.width + 0.01 and height <= render_rect.height + 0.01:
                         page.insert_text(
-                            (rect.x0, rect.y0 + candidate),
+                            (render_rect.x0, render_rect.y0 + candidate),
                             fragment,
                             fontname=font_name,
                             fontsize=candidate,
@@ -191,6 +226,26 @@ def render_overlay(
                             overlay=True,
                         )
                         remaining = 0.0
+                if remaining < 0:
+                    expanded = _safe_expanded_rect(page, render_rect, segment.id, segments, ast)
+                    if expanded != render_rect:
+                        page.draw_rect(expanded, color=None, fill=(1, 1, 1), overlay=True)
+                        font_size = max(minimum_font_size, min(12.0, expanded.height * 0.45))
+                        while font_size >= minimum_font_size:
+                            shape = page.new_shape()
+                            remaining = shape.insert_textbox(
+                                expanded,
+                                fragment,
+                                fontname=font_name,
+                                fontsize=font_size,
+                                lineheight=lineheight,
+                                color=(0, 0, 0),
+                            )
+                            if remaining >= 0:
+                                shape.commit(overlay=True)
+                                render_rect = expanded
+                                break
+                            font_size -= 0.5
                 if remaining < 0:
                     _fail(
                         report,

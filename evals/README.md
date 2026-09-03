@@ -23,11 +23,18 @@ V2 不在运行期间等待普通用户 Judge。评测由开发者在运行完�
 3. 对每个样本记录 `local_preferred`、`remote_preferred`、`tie` 或 `neither`，并记录忠实度、连贯性、Entity/Glossary、一致性和格式问题。
 4. 统计 remote-review rate、remote tokens per page、local/remote latency、review debt rate、Entity violation rate、render failure rate 和 pages per minute。
 5. 风险阈值或抽检比例变化前，先在同一 Golden Set 上比较旧策略与新策略；没有证据不得仅凭主观判断调高或调低阈值。
+   当前默认策略为风险阈值 `0.35`、上下文降级权重 `0.35`、每 5 个段落抽检 1 个。可通过 `V2_REMOTE_RISK_THRESHOLD`、`V2_CONTEXT_DEGRADED_WEIGHT` 和 `V2_CALIBRATION_INTERVAL` 覆盖；每次覆盖都必须记录实际值和 `risk-policy` 版本。
 6. 修改 Prompt、模型、分片策略、Entity 过滤或渲染逻辑后，必须重跑受影响类别，不能只运行单元测试代替质量评测。
+
+渲染文字框扩展、字号/行距适配或 PDF 校验逻辑发生变化时，至少重跑边界排版、长译文、缺字、碰撞和输出文本完整性类别，并保留渲染失败率对比。
+
+重排渲染（`V2_RENDER_MODE=reflow`）必须额外验证章节换页、中文字号、首行缩进、单一全局页码、图片/矢量地图区域和跨页文本完整性；Chromium 生成的页面至少抽样渲染为 PNG 进行人工视觉检查。Overlay 与 Reflow 的结果不得混称为同一版式策略。
+
+每次重排评测还必须保留 `format_review.json`：每页的字号、墨迹比例、文本块数、嵌入图像数、截图和 segment 输出页映射；本地/远端格式审阅模型、usage、失败/债务；以及最多两次的章节级修复历史。确定性检查失败是硬门槛；模型审阅只补充视觉判断。格式审阅调用失败或超时必须记为 `format_review_debt`，不得计入已审核页。
 
 ## V2 benchmark record
 
-在宣称支持 50 页前，必须保留目标机器的基准记录，至少包括：GPU 型号和 VRAM、系统内存、Ollama 与模型/量化版本、context window、batch size、并发数、输入/输出 token、pages per minute、失败/重试率和峰值内存。基准记录可以是本地脱敏 JSON，但不得提交 API key、原始 PDF、完整译文或 SQLite/runs 产物。
+实验性运行可以在没有完整基准时进行，但不得宣称正式支持 50 页。正式支持 50 页前，必须保留目标机器的基准记录，至少包括：GPU 型号和 VRAM、系统内存、Ollama 与模型/量化版本、context window、batch size、并发数、输入/输出 token、pages per minute、失败/重试率和峰值内存。基准记录可以是本地脱敏 JSON，但不得提交 API key、原始 PDF、完整译文或 SQLite/runs 产物。
 
 ## V2 coverage report
 

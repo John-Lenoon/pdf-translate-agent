@@ -1,0 +1,42 @@
+.primary-artifact {
+  margin-top: 22px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  padding: 22px;
+}
+.primary-artifact-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 16px;
+}
+.primary-artifact h2 {
+  font-family: Georgia, serif;
+  font-size: 24px;
+  font-weight: 500;
+  margin: 6px 0 0;
+}
+.download-button {
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 14px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: var(--accent);
+  color: #fff;
+  text-decoration: none;
+  font-size: 13px;
+}
+.primary-artifact iframe {
+  display: block;
+  width: 100%;
+  height: min(76vh, 920px);
+  border: 1px solid var(--line);
+  background: #eef1ee;
+}
+@media (max-width: 520px) {
+  .primary-artifact { padding: 14px; }
+  .primary-artifact-head { align-items: flex-start; flex-direction: column; }
+  .primary-artifact iframe { height: 70vh; }
+}

@@ -1,6 +1,6 @@
 # Local Model Integration Proposal
 
-> Status: Historical. Superseded by [`../v2-dual-model.md`](../v2-dual-model.md). This file is retained for design-history reference only.
+> Status: Historical. Superseded by [`../core-design.md`](../core-design.md). This file is retained for design-history reference only.
 
 ## Decision to Make
 

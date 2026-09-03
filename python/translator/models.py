@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 
@@ -59,15 +59,33 @@ class EntityObservation(BaseModel):
     evidence_text: str = ""
 
 
+class EntityDiscoveryResult(BaseModel):
+    entities: list[EntityObservation] = Field(default_factory=list)
+
+
 class TranslationResult(BaseModel):
     translation: str
     entity_observations: list[EntityObservation] = Field(default_factory=list)
     glossary_suggestions: list[dict[str, str]] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
+    risk_label: Literal["low", "medium", "high"] = "low"
 
 
 class ChapterSummaryResult(BaseModel):
     summary: str
+
+
+class StructureReviewResult(BaseModel):
+    block_type: Literal["heading", "paragraph"]
+    level: int = Field(default=0, ge=0, le=3)
+    confidence: float = Field(ge=0, le=1)
+    reason: str = ""
+
+
+class FormatReviewResult(BaseModel):
+    status: Literal["pass", "fail"]
+    issues: list[dict[str, Any]] = Field(default_factory=list)
+    summary: str = ""
 
 
 class RenderIssue(BaseModel):
@@ -83,3 +101,39 @@ class RenderReport(BaseModel):
     page_count: int
     rendered_segments: int = 0
     issues: list[RenderIssue] = Field(default_factory=list)
+
+
+class RunModelPlan(BaseModel):
+    plan_version: str = "v2.1"
+    local_adapter: Literal["ollama"] = "ollama"
+    local_endpoint: str
+    local_model: str
+    local_context_window: int = Field(gt=0)
+    local_max_output_tokens: int = Field(gt=0)
+    local_batch_concurrency: int = Field(default=1, ge=1)
+    remote_adapter: Literal["openai_compatible"] | None = None
+    remote_endpoint: str | None = None
+    remote_model: str | None = None
+    credential_vault_ref: str | None = None
+    remote_max_concurrency: int = Field(default=1, ge=1)
+    prompt_version: str
+    workflow_version: str
+    risk_policy_version: str
+
+
+class TranslationCandidate(BaseModel):
+    source: Literal["local", "remote"]
+    text: str = Field(min_length=1)
+    model: str
+    prompt_version: str
+    context_version: str
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class RoutingDecision(BaseModel):
+    score: float = Field(ge=0, le=1)
+    signals: list[str] = Field(default_factory=list)
+    risk_label: Literal["low", "medium", "high"] = "low"
+    route: Literal["local_only", "remote_review"]
+    review_status: Literal["not_required", "kept", "revised", "review_debt", "failed"]
+    selection_reason: str

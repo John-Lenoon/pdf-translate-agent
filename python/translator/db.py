@@ -10,10 +10,17 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterator
 
-from .models import DocumentAST, EntityObservation, Segment
+from .models import (
+    DocumentAST,
+    EntityObservation,
+    RoutingDecision,
+    RunModelPlan,
+    Segment,
+    TranslationCandidate,
+)
 
 ACTIVE_STATUSES = {"parsing", "segmenting", "translating", "rendering"}
-CLAIMABLE_STATUSES = {"created", "retranslate_queued"}
+CLAIMABLE_STATUSES = {"created", "retranslate_queued", "remote_review_queued"}
 
 
 class RunLeaseLostError(RuntimeError):
@@ -115,6 +122,25 @@ class Database:
 
     def run(self, run_id: str):
         return self.fetchone("SELECT * FROM runs WHERE id=?", (run_id,))
+
+    def save_run_model_plan(self, run_id: str, plan: RunModelPlan) -> str:
+        plan_json = json.dumps(plan.model_dump(mode="json"), ensure_ascii=False, sort_keys=True)
+        plan_hash = hashlib.sha256(plan_json.encode()).hexdigest()
+        with self.transaction(immediate=True) as connection:
+            existing = connection.execute(
+                "SELECT plan_hash FROM run_model_plans WHERE run_id=?", (run_id,)
+            ).fetchone()
+            if existing and existing["plan_hash"] != plan_hash:
+                raise ValueError("RUN_MODEL_PLAN_MISMATCH")
+            if not existing:
+                connection.execute(
+                    "INSERT INTO run_model_plans(run_id,plan_hash,plan_json,created_at) VALUES(?,?,?,?)",
+                    (run_id, plan_hash, plan_json, now()),
+                )
+        return plan_hash
+
+    def run_model_plan(self, run_id: str):
+        return self.fetchone("SELECT * FROM run_model_plans WHERE run_id=?", (run_id,))
 
     def set_run(
         self,
@@ -257,6 +283,84 @@ class Database:
             )
             self._event(connection, run_id, "segment_translated", {"segment_id": segment_id})
 
+    def save_candidate(
+        self,
+        run_id: str,
+        segment_id: str,
+        candidate: TranslationCandidate,
+        *,
+        current: bool = False,
+    ) -> int:
+        with self.transaction(immediate=True) as connection:
+            if current:
+                connection.execute(
+                    "UPDATE translation_candidates SET is_current=0 WHERE run_id=? AND segment_id=?",
+                    (run_id, segment_id),
+                )
+            cursor = connection.execute(
+                "INSERT INTO translation_candidates(run_id,segment_id,source,text,model,prompt_version,"
+                "context_version,metadata_json,is_current,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)",
+                (
+                    run_id,
+                    segment_id,
+                    candidate.source,
+                    candidate.text,
+                    candidate.model,
+                    candidate.prompt_version,
+                    candidate.context_version,
+                    json.dumps(candidate.metadata, ensure_ascii=False),
+                    int(current),
+                    now(),
+                ),
+            )
+            return int(cursor.lastrowid)
+
+    def candidates(self, run_id: str, segment_id: str | None = None):
+        query = "SELECT * FROM translation_candidates WHERE run_id=?"
+        parameters: tuple = (run_id,)
+        if segment_id is not None:
+            query += " AND segment_id=?"
+            parameters += (segment_id,)
+        return self.fetchall(query + " ORDER BY id", parameters)
+
+    def save_risk_decision(
+        self, run_id: str, segment_id: str, decision: RoutingDecision
+    ) -> None:
+        with self.transaction(immediate=True) as connection:
+            connection.execute(
+                "INSERT INTO risk_decisions(run_id,segment_id,decision_json,created_at) VALUES(?,?,?,?) "
+                "ON CONFLICT(run_id,segment_id) DO UPDATE SET decision_json=excluded.decision_json,"
+                "created_at=excluded.created_at",
+                (run_id, segment_id, decision.model_dump_json(), now()),
+            )
+
+    def risk_decision(self, run_id: str, segment_id: str):
+        return self.fetchone(
+            "SELECT * FROM risk_decisions WHERE run_id=? AND segment_id=?", (run_id, segment_id)
+        )
+
+    def review_debt_segments(self, run_id: str):
+        return self.fetchall(
+            "SELECT segment_id FROM risk_decisions WHERE run_id=? "
+            "AND json_extract(decision_json, '$.review_status')='review_debt' ORDER BY segment_id",
+            (run_id,),
+        )
+
+    def provider_event(
+        self, run_id: str, event_type: str, payload: dict, segment_id: str | None = None
+    ) -> None:
+        with self.transaction(immediate=True) as connection:
+            connection.execute(
+                "INSERT INTO provider_events(run_id,segment_id,event_type,payload_json,created_at) "
+                "VALUES(?,?,?,?,?)",
+                (run_id, segment_id, event_type, json.dumps(payload, ensure_ascii=False), now()),
+            )
+
+    def provider_events(self, run_id: str):
+        return self.fetchall(
+            "SELECT * FROM provider_events WHERE run_id=? ORDER BY id", (run_id,)
+        )
+
     def next_attempt(self, run_id: str, segment_id: str) -> int:
         row = self.fetchone(
             "SELECT COALESCE(MAX(attempt),0)+1 AS attempt FROM translations "
@@ -379,7 +483,7 @@ class Database:
             row = connection.execute("SELECT status FROM runs WHERE id=?", (run_id,)).fetchone()
             if not row:
                 raise KeyError(run_id)
-            if row["status"] in {"completed", "cancelled"}:
+            if row["status"] in {"completed", "completed_with_review_debt", "cancelled"}:
                 return False
             connection.execute(
                 "UPDATE runs SET status='cancel_requested',updated_at=? WHERE id=?", (now(), run_id)
@@ -393,10 +497,18 @@ class Database:
             if not row:
                 raise KeyError(run_id)
             status = row["status"]
-            if status in ACTIVE_STATUSES or status in {"created", "retranslate_queued"}:
+            if status in ACTIVE_STATUSES or status in CLAIMABLE_STATUSES:
                 return status
             if status == "completed":
                 return status
+            if status == "completed_with_review_debt":
+                connection.execute(
+                    "UPDATE runs SET status='remote_review_queued',error_code=NULL,error_message=NULL,"
+                    "updated_at=? WHERE id=?",
+                    (now(), run_id),
+                )
+                self._event(connection, run_id, "remote_review_queued", {})
+                return "remote_review_queued"
             connection.execute(
                 "UPDATE runs SET status='created',error_code=NULL,error_message=NULL,updated_at=? "
                 "WHERE id=?",
@@ -414,7 +526,7 @@ class Database:
         with self.transaction(immediate=True) as connection:
             row = connection.execute(
                 "SELECT id,status FROM runs WHERE "
-                "status IN ('created','retranslate_queued') OR "
+                "status IN ('created','retranslate_queued','remote_review_queued') OR "
                 "(status IN ('parsing','segmenting','translating','rendering') AND "
                 "(lease_until IS NULL OR lease_until<?)) ORDER BY created_at LIMIT 1",
                 (current,),

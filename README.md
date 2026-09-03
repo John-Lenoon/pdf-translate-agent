@@ -46,7 +46,11 @@ V1 首先验证 10 页以内的端到端闭环，初步支持 50 页以内的文
 
 需要 Node.js 22+、pnpm、Python 3.13+ 和 `uv`。在仓库根目录执行 `Copy-Item .env.example .env`，然后设置 `OPENAI_API_KEY` 与 `TRANSLATION_MODEL`；后端会自动加载这个文件，密钥只在本地环境变量中保存。可选的 `TRANSLATION_FONT_PATH` 可指向本机中文字体文件；未设置时使用 PyMuPDF 内置 CJK 字体。
 
-V2 Runner 强制使用本地 Ollama：设置 `V2_LOCAL_MODEL=qwen3:8b` 和 `V2_OLLAMA_ENDPOINT=http://127.0.0.1:11434`；Ollama/GPU/probe 任一检查失败都会停止 Runner，不会回退到远程或 CPU。再设置 `V2_REMOTE_MODEL` 才会在高风险段落调用远程 Provider；当前临时沿用 `OPENAI_API_KEY`/`OPENAI_BASE_URL`，Provider Profile 与系统凭据库属于后续切片。默认关闭整章摘要（`V2_ENABLE_CHAPTER_SUMMARY=0`），本地请求默认限制为 4096 context / 512 输出 tokens，并关闭 Qwen3 thinking。
+V2 的双模型基础层仍在开发中，尚未提供可供用户配置的 Provider Profile、操作系统凭据库或完整 Workflow 接入。请勿将 V2 环境变量作为已支持的用户流程；当前可运行的本地翻译闭环以 V1 配置为准。
+
+中文阅读版默认使用 `V2_RENDER_MODE=reflow` 的 HTML/CSS 重排渲染。该模式使用 Playwright 管理的 Chromium 自动分页，正文不回写原文字框，允许译文增加页数；首次使用需执行 `pnpm install` 和 `pnpm exec playwright install chromium`。设置 `V2_RENDER_MODE=overlay` 可切回旧版覆盖渲染以便回归对比。
+
+远程审核覆盖率可通过 `V2_REMOTE_RISK_THRESHOLD`（默认 `0.35`）、`V2_CONTEXT_DEGRADED_WEIGHT`（默认 `0.35`）和 `V2_CALIBRATION_INTERVAL`（默认每 5 个段落抽检 1 个）校准。调整前应按 [`evals/README.md`](evals/README.md) 在 Golden Set 上比较成本与质量。
 
 Next.js 默认连接 `http://127.0.0.1:8000`，无需前端环境文件。只有修改后端地址时，才执行 `Copy-Item apps/web/.env.local.example apps/web/.env.local` 并修改 `NEXT_PUBLIC_API_URL`。不要在 `NEXT_PUBLIC_*` 变量中放置 API 密钥，因为它们会进入浏览器端构建产物。
 
@@ -107,4 +111,4 @@ pnpm --dir apps/web dev
 
 V1 本地闭环已进入 `in_progress`：自动化实现、本地 UI 与高风险代码审查已通过，但正式完成仍取决于真实模型可用性、3 个合法样本和至少 30 个 Golden Set 段落的人工 Judge 记录。当前状态和证据以 [`docs/roadmap.md`](docs/roadmap.md) 为准。
 
-V2 双模型基础层已进入 `in_progress`：包含本地 Ollama Adapter、可解释风险路由、不可变模型计划、候选/风险持久化和开发者运行报告。Provider Profile UI、操作系统凭据库以及对 V1 Workflow 的双模型接入仍未完成。V2 保持本地优先，不引入登录、多用户托管、PostgreSQL 或通用 RAG；详细边界见 [`docs/v2-dual-model.md`](docs/v2-dual-model.md)。
+V2 双模型基础层已进入 `in_progress`：包含本地 Ollama Adapter、可解释风险路由、不可变模型计划、候选/风险持久化和开发者运行报告。Provider Profile UI、操作系统凭据库以及对 V1 Workflow 的双模型接入仍未完成。V2 保持本地优先，不引入登录、多用户托管、PostgreSQL 或通用 RAG；详细边界见 [`docs/core-design.md`](docs/core-design.md)。

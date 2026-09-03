@@ -44,3 +44,9 @@ def test_parse_pdf_rejects_a_page_with_only_footer_text(tmp_path):
 
     with pytest.raises(PDFValidationError, match="PDF_TEXT_COVERAGE_TOO_LOW_PAGE_1"):
         parse_pdf(source)
+
+
+def test_parse_pdf_accepts_a_short_text_title(tmp_path, make_pdf):
+    ast = parse_pdf(make_pdf(tmp_path / "title.pdf", paragraphs=["THE QUIET HOUR"]))
+
+    assert ast.pages[0].blocks[0].text == "THE QUIET HOUR"

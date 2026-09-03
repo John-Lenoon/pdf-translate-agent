@@ -225,7 +225,7 @@ def create_app(runs_root: Path | None = None) -> FastAPI:
         files = []
         if directory.exists():
             for path in sorted(directory.iterdir()):
-                if run["status"] != "completed" and path.name in {
+                if run["status"] not in {"completed", "completed_with_review_debt"} and path.name in {
                     "translated.pdf",
                     "translated.report.json",
                 }:
@@ -241,9 +241,9 @@ def create_app(runs_root: Path | None = None) -> FastAPI:
         return {"files": files}
 
     @app.get("/runs/{run_id}/artifacts/{name}")
-    def download_artifact(run_id: str, name: str):
+    def download_artifact(run_id: str, name: str, inline: bool = False):
         run = require_run(run_id)
-        if run["status"] != "completed" and name in {
+        if run["status"] not in {"completed", "completed_with_review_debt"} and name in {
             "translated.pdf",
             "translated.report.json",
         }:
@@ -252,7 +252,7 @@ def create_app(runs_root: Path | None = None) -> FastAPI:
         path = (directory / name).resolve()
         if path.parent != directory or not path.is_file():
             raise APIError(404, "ARTIFACT_NOT_FOUND", "Artifact not found", run_id=run_id)
-        return FileResponse(path, filename=path.name)
+        return FileResponse(path, filename=path.name, content_disposition_type="inline" if inline else "attachment")
 
     return app
 

@@ -56,6 +56,22 @@ def test_failed_run_does_not_expose_stale_translation(tmp_path, make_pdf):
     assert response.json()["error_code"] == "ARTIFACT_STALE"
 
 
+def test_completed_pdf_can_be_previewed_inline(tmp_path, make_pdf):
+    source = make_pdf(tmp_path / "book.pdf")
+    runs_root = tmp_path / "runs"
+    app = create_app(runs_root)
+    client = TestClient(app)
+    run_id = client.post(
+        "/runs", json={"source_pdf": str(source), "idempotency_key": "request-inline"}
+    ).json()["run_id"]
+    (runs_root / run_id / "translated.pdf").write_bytes(b"%PDF-1.7")
+    app.state.db.set_run(run_id, "completed")
+
+    response = client.get(f"/runs/{run_id}/artifacts/translated.pdf?inline=true")
+    assert response.status_code == 200
+    assert "inline" in response.headers["content-disposition"]
+
+
 def test_upload_creates_run_without_original_path(tmp_path, make_pdf):
     source = make_pdf(tmp_path / "book.pdf")
     app = create_app(tmp_path / "runs")
